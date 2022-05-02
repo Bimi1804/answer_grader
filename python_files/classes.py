@@ -571,6 +571,54 @@ class Constraint_type:
                                                         processed_answer)
         return return_value
 
+    # Unary Constraints:
+    def __absence_1_check():
+        pass
+
+    def __absence_2_check():
+        pass
+
+    def __absence_3_check():
+        pass
+
+    def __exactly_1_check():
+        pass
+
+    def __exactly_2_check():
+        pass
+
+    def __existence_1_check():
+        pass
+
+    def __existence_2_check():
+        pass
+
+    def __existence_3_check():
+        pass
+
+    def __init_check():
+        pass
+
+
+    #Binary Positive Constraints:
+    def __alternate_precedence_check():
+        pass
+
+    def __alternate_response_check():
+        pass
+
+    def __alternate_succession_check():
+        pass
+
+    def __chain_precedence_check():
+        pass
+
+    def __chain_response_check():
+        pass
+
+    def __chain_succession_check():
+        pass
+
     def __co_existence_check(self,act_a,act_b,processed_answer):
         """
         Checks if the answer fulfills Co-Existence[A,B]
@@ -631,6 +679,27 @@ class Constraint_type:
             checking = checking[act_b_index+1:]
         # If the answer does not violate the constraint:
         return True
+
+    def __responded_existence_check():
+        pass
+
+    def __response_check():
+        pass
+
+    def __succession_check():
+        pass
+
+    # Binary Negative Constraints:
+    def __not_chain_succession_check():
+        pass
+
+    def __not_co_existence_check():
+        pass
+
+    def __not_succession_check():
+        pass
+
+
 
 
 constraint_types = [] # A list with all implemented constraint-types
