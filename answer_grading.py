@@ -16,7 +16,7 @@ original_file_name = question_list[1]
 
 question.pre_process_question()
 question.generate_event_log()
-question.event_log.export_event_log_xes(original_file_name=original_file_name)
+#question.event_log.export_event_log_xes(original_file_name=original_file_name)
 
 
 #(4) Import constraints from mining-output-----------------------------------
@@ -30,8 +30,27 @@ question.check_constraints()
 
 #-------Export grades + number of co-existence-----------------
 
-export_data_as_csv(question=question,original_file_name=original_file_name)
+#export_data_as_csv(question=question,original_file_name=original_file_name)
 
+
+#for answ in question.student_answers:
+#    print( "["+ answ.student_id + "] " + str(answ.pre_processed_answer_text))
+#    for const in answ.fulfilled_constraints:
+#        print(const.constraint_type.constraint_type_name + "[" +
+#              const.activity_a.activity_text + ", " +
+#              const.activity_b.activity_text + "]")
+
+
+for answ in question.student_answers:
+    print( "["+ answ.student_id + "] " + str(answ.pre_processed_answer_text))
+    answer = answ.pre_processed_answer_text
+    for const in answ.fulfilled_constraints:
+        a = const.activity_a.activity_text
+        b = const.activity_b.activity_text
+        if a in answer and b in answer:
+            print(const.constraint_type.constraint_type_name + "[" +
+                  const.activity_a.activity_text + ", " +
+                  const.activity_b.activity_text + "]")
 
 
 

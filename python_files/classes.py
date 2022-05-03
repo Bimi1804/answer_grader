@@ -565,60 +565,300 @@ class Constraint_type:
         # Use the conformance check that belongs to the constraint-type
         if self.constraint_type_name == "Co-Existence":
             return_value = self.__co_existence_check(act_a,act_b,
-                                                        processed_answer)
+                                                     processed_answer)
         if self.constraint_type_name == "Precedence":
-            return_value = self.__precedence_check(act_a,act_b,
-                                                        processed_answer)
+            return_value = self.__precedence_check(act_a,act_b,processed_answer)
+        if self.constraint_type_name == "Alternate Precedence":
+            return_value = self.__alternate_precedence_check(act_a,act_b,
+                                                             processed_answer)
+        if self.constraint_type_name == "Alternate Response":
+            return_value = self.__alternate_response_check(act_a,act_b,
+                                                           processed_answer)
+        if self.constraint_type_name == "Alternate Succession":
+            return_value = self.__alternate_succession_check(act_a,act_b,
+                                                           processed_answer)
+        if self.constraint_type_name == "Chain Precedence":
+            return_value = self.__chain_precedence_check(act_a,act_b,
+                                                           processed_answer)
+        if self.constraint_type_name == "Chain Response":
+            return_value = self.__chain_response_check(act_a,act_b,
+                                                           processed_answer)
+        if self.constraint_type_name == "Chain Succession":
+            return_value = self.__chain_succession_check(act_a,act_b,
+                                                           processed_answer)
+        if self.constraint_type_name == "Responded Existence":
+            return_value = self.__responded_existence_check(act_a,act_b,
+                                                           processed_answer)
+        if self.constraint_type_name == "Response":
+            return_value = self.__response_check(act_a,act_b,
+                                                           processed_answer)
         return return_value
 
     # Unary Constraints:
     def __absence_1_check():
         pass
-
     def __absence_2_check():
         pass
-
     def __absence_3_check():
         pass
-
     def __exactly_1_check():
         pass
-
     def __exactly_2_check():
         pass
-
     def __existence_1_check():
         pass
-
     def __existence_2_check():
         pass
-
     def __existence_3_check():
         pass
-
     def __init_check():
         pass
 
-
     #Binary Positive Constraints:
-    def __alternate_precedence_check():
-        pass
+    # Alternate X
+    def __alternate_precedence_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Alternate Precedence[A,B]
 
-    def __alternate_response_check():
-        pass
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
 
-    def __alternate_succession_check():
-        pass
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # True if B is not in the answer:
+        if act_b not in processed_answer:
+            return True
+        # False if B is in the answer but no A is in the answer:
+        if act_b in processed_answer and act_a not in processed_answer:
+            return False
+        checking = processed_answer
+        # Check if every B is preceded by an A
+        while act_b in checking:
+            # False if B is in the remaining answer but no A:
+            if act_a not in checking:
+                return False
+            marker_b = checking.index(act_b) # index of first B
+            marker_a = checking.index(act_a) # index of first A
+            # False if A is not before B
+            if marker_b < marker_a:
+                return False
+            # continue with the remaining answer after B
+            checking = checking[marker_b+1:]
+        return True
 
-    def __chain_precedence_check():
-        pass
+    def __alternate_response_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Alternate Response[A,B]
 
-    def __chain_response_check():
-        pass
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
 
-    def __chain_succession_check():
-        pass
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # True if A not in the answer:
+        if act_a not in processed_answer:
+            return True
+        # False if A in the answer but no B:
+        if act_a in processed_answer and act_b not in processed_answer:
+            return False
+        checking = processed_answer
+        # Check if every A is followed by B without A between:
+        while act_a in checking:
+            # False if no B in remaining answer:
+            if act_b not in checking:
+                return False
+            marker_a = checking.index(act_a)                # index of first A
+            marker_b = checking.index(act_b)                # index of first B
+            # False if B before A:
+            if marker_b < marker_a:
+                return False
+            # False if an A is between first A and first B
+            if act_a in checking[marker_a+1:marker_b]:
+                return False
+            checking.pop(marker_a)                          # remove first A
+            checking.pop(checking.index(act_b))             # remove first B
+        return True
 
+    def __alternate_succession_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Alternate Succession[A,B]
+
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
+
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # True if A and B are not in the answer:
+        if act_a not in processed_answer and act_b not in processed_answer:
+            return True
+        # False if only A or only B is in the answer:
+        if act_a not in processed_answer or act_b not in processed_answer:
+            return False
+        checking = processed_answer
+        # Check as long as A or B are in the remaining answer:
+        while act_a in checking or act_b in checking:
+            # False if one of them is not in the reamaining answer:
+            if act_a not in checking:
+                return False
+            if act_b not in checking:
+                return False
+            marker_a = checking.index(act_a)                # index of first A
+            marker_b = checking.index(act_b)                # index of first B
+            # False if A follows B:
+            if marker_a > marker_b:
+                return False
+            # False if an A is between first A and first B
+            if act_a in checking[marker_a+1:marker_b]:
+                return False
+            checking.pop(marker_a)                          # remove first A
+            checking.pop(checking.index(act_b))             # remove first B
+        return True
+
+    # Chain X
+    def __chain_precedence_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Chain Precedence[A,B]
+
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
+
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # True if B is not in the answer:
+        if act_b not in processed_answer:
+            return True
+        # False if B is in answer but A is not in answer:
+        if act_b in processed_answer and act_a not in processed_answer:
+            return False
+        checking = processed_answer
+        while act_b in checking:
+            marker_b = checking.index(act_b)
+            # False if B is the first element:
+            if marker_b == 0:
+                return False
+            # False if A is not directly before B:
+            if checking[marker_b-1] != act_a:
+                return False
+            checking.pop(marker_b)
+            checking.pop(checking.index(act_a))
+        return True
+
+    def __chain_response_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Chain Reponse[A,B]
+
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
+
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # True if A is not in answer:
+        if act_a not in processed_answer:
+            return True
+        # False if A is in answer but B is not in answer:
+        if act_a in processed_answer and act_b not in processed_answer:
+            return False
+        checking = processed_answer
+        while act_a in checking:
+            # False if B not in remaining answer:
+            if act_b not in checking:
+                return False
+            marker_a = checking.index(act_a)       # index of first A
+            # False if A is the last element:
+            if marker_a == len(checking)-1:
+                return False
+            # False is A is not immediately followed by B:
+            if checking[marker_a+1] != act_b:
+                return False
+            checking.pop(marker_a)
+            checking.pop(checking.index(act_b))
+        return True
+
+    def __chain_succession_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Chain Succession[A,B]
+
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
+
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # True if A and B are not in answer:
+        if act_a not in processed_answer and act_b not in processed_answer:
+            return True
+        # False if only A or only B is in answer:
+        if act_a not in processed_answer or act_b not in processed_answer:
+            return False
+        checking = processed_answer
+        while act_a in checking or act_b in checking:
+            # False if only A or only B in reamining answer:
+            if act_b not in checking or act_a not in checking:
+                return False
+            marker_a = checking.index(act_a)        # index of the first A
+            # False if A is the last element:
+            if marker_a == len(checking)-1:
+                return False
+            # False is A is not immediately followed by B:
+            if checking[marker_a+1] != act_b:
+                return False
+            checking.pop(marker_a)
+            checking.pop(checking.index(act_b))
+        return True
+    #--
     def __co_existence_check(self,act_a,act_b,processed_answer):
         """
         Checks if the answer fulfills Co-Existence[A,B]
@@ -680,11 +920,70 @@ class Constraint_type:
         # If the answer does not violate the constraint:
         return True
 
-    def __responded_existence_check():
-        pass
+    def __responded_existence_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Responded Existence[A,B]
 
-    def __response_check():
-        pass
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
+
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # True if A not in answer:
+        if act_a not in processed_answer:
+            return True
+        # False if A in answer but B not in answer
+        if act_a in processed_answer and act_b not in processed_answer:
+            return False
+        # True if A is in the answer and B is in the answer
+        return True
+
+    def __response_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Response[A,B]
+
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
+
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # True if A is not in processed_answer:
+        if act_a not in processed_answer:
+            return True
+        # False if A in answer but B not in answer:
+        if act_a in processed_answer and act_b not in processed_answer:
+            return False
+        checking = processed_answer
+        while act_a in checking:
+            # False if A is in remaining answer but B is not:
+            if act_b not in checking:
+                return False
+            marker_a = checking.index(act_a)
+            # False if A is the last element:
+            if marker_a == len(checking)-1:
+                return False
+            if act_b not in checking[marker_a:]:
+                return False
+            checking = checking[marker_a+1:]
+        return True
 
     def __succession_check():
         pass
@@ -699,9 +998,27 @@ class Constraint_type:
     def __not_succession_check():
         pass
 
+    # Choice Constraints:
+    def __choice_check():
+        pass
 
+    def __exclusive_choice_check():
+        pass
 
-
-constraint_types = [] # A list with all implemented constraint-types
+#-----------------------------------------------------------------------------
 coexistence = Constraint_type("Co-Existence") # instantiation of "Co-Existence"
-constraint_types.append(coexistence)
+precedence = Constraint_type("Precedence")
+alternate_precedence = Constraint_type("Alternate Precedence")
+alternate_response = Constraint_type("Alternate Response")
+alternate_succession = Constraint_type("Alternate Succession")
+chain_precedence = Constraint_type("Chain Precedence")
+chain_response = Constraint_type("Chain Response")
+chain_succession = Constraint_type("Chain Succession")
+responded_existence = Constraint_type("Responded Existence")
+response = Constraint_type("Response")
+
+
+constraint_types = [coexistence,precedence,alternate_precedence,
+                    alternate_response, alternate_succession,chain_precedence,
+                    chain_response,chain_succession,responded_existence,
+                    response]
