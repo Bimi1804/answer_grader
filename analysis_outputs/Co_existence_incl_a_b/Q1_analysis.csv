@@ -1,4 +1,4 @@
-Student_id,grade,number_of_constraints
+Student_id,grade,cons_incl_a_b
 6,3.5,6
 5,5,1
 8,4,7

@@ -111,7 +111,6 @@ def export_data_as_csv(question=None, export_file=None, original_file_name=""):
     if question is None or type(question) is not Question:
         print("Please enter a question-object")
         return False
-        #
     # Open file-dialog is export_file is None
     if export_file is None:
         export_file = asksaveasfilename(
@@ -130,4 +129,39 @@ def export_data_as_csv(question=None, export_file=None, original_file_name=""):
                 writer.writerow([answ.student_id,
                                 answ.grade,
                                 len(answ.fulfilled_constraints)])
+    return export_file
+
+
+def export_data_const_incl_a_b(question=None, export_file=None,
+                                original_file_name=""):
+    # Type-checking of question
+    if question is None or type(question) is not Question:
+        print("Please enter a question-object")
+        return False
+    # Open file-dialog is export_file is None
+    if export_file is None:
+        export_file = asksaveasfilename(
+                        title="Export Analysis Data for: " + original_file_name,
+                        filetypes=[('CSV','*.csv')],
+                        defaultextension="csv",
+                        initialfile=question.q_id + "_analysis")
+    if export_file != "":
+        # Define the header for the .csv
+        header = ["Student_id","grade","cons_incl_a_b"]
+        with open(export_file,"w",newline="") as file:
+            writer=csv.writer(file)
+            writer.writerow(header) # write header into file
+            # write rows with sutdent_id, grade, number of fulfilled constraints
+            for answ in question.student_answers:
+                cons_incl_a_b = []
+                pro_answ = answ.pre_processed_answer_text
+                # Only include constraints where A and B are in the answer:
+                for cons in answ.fulfilled_constraints:
+                    cons_a = cons.activity_a.activity_text
+                    cons_b = cons.activity_b.activity_text
+                    if  cons_a in pro_answ and cons_b in pro_answ:
+                        cons_incl_a_b.append(cons)
+                writer.writerow([answ.student_id,
+                                answ.grade,
+                                len(cons_incl_a_b)])
     return export_file

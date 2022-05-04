@@ -25,7 +25,6 @@ root.withdraw()
 from abc import (ABC,abstractmethod) # for abstract class and abstract method
 
 
-
 #------Global Functions----------------------------------------------------
 class Tools:
     """"
@@ -113,6 +112,11 @@ class Question:
         Check which mined constraints are fulfilled by the answers
     calculate_rightness():
         Calculate the "rightness" of answers
+    display_cons():
+        Displays all processed answer texts and the fulfilled constraints.
+    display_cons_incl_a_b():
+        Displays all processed answer texts and the fulfilled constraints where
+        A and B are included in the processed answer.
     """
     def __init__(self,q_id,q_text):
         self.q_id = q_id
@@ -202,6 +206,49 @@ class Question:
         # constraints...
         pass
 
+    def display_cons(self):
+        """
+        Displays all processed answer texts and the fulfilled constraints.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        for answ in self.student_answers:
+            print( "["+ answ.student_id + "] " + str(answ.pre_processed_answer_text))
+            for const in answ.fulfilled_constraints:
+                print(const.constraint_type.constraint_type_name + "[" +
+                const.activity_a.activity_text + ", " +
+                const.activity_b.activity_text + "]")
+
+    def display_cons_incl_a_b(self):
+        """
+        Display the processed answer texts and all constraints where A and B
+        are also included in the answer.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        for answ in self.student_answers:
+            print( "["+ answ.student_id + "] " + str(answ.pre_processed_answer_text))
+            answer = answ.pre_processed_answer_text
+            for const in answ.fulfilled_constraints:
+                a = const.activity_a.activity_text
+                b = const.activity_b.activity_text
+                if a in answer and b in answer:
+                    print(const.constraint_type.constraint_type_name + "[" +
+                          const.activity_a.activity_text + ", " +
+                          const.activity_b.activity_text + "]")
+
 class Answer(ABC):
     """
     The abstract Answer class
@@ -246,10 +293,9 @@ class Teacher_answer(Answer):
     """
     def __init__(self,question,answer_text):
         super().__init__(question,answer_text)
-        question.teacher_answers.append(self) # Adds the object to the
-                                              # teacher_answers list of the
-                                              # Question object that is stored
-                                              # in self.question
+        # Add the object to the teacher_answers list of the Question object
+        # that is given as Parameter:
+        question.teacher_answers.append(self)
 
 class Student_answer(Answer):
     """
@@ -281,10 +327,9 @@ class Student_answer(Answer):
         self.student_id = student_id
         self.calculated_rightness = None
         self.grade = grade
-        question.student_answers.append(self) # Adds the object to the
-                                              # student_answers list of the
-                                              # Question object that is stored
-                                              # in self.question
+        # Add the object to the student_answer list of the Question object
+        # that is given as Parameter:
+        question.student_answers.append(self)
 
 class Event_log:
     """
@@ -424,6 +469,48 @@ class Event_log:
         #This would be the declarative process Miner
         pass
 
+    def rate_constraints(self):
+        """
+        Rate all constraints of an event-log. If they are essential for the
+        "rightness" of an answer.
+
+        Display the original answer and the constraint. Ask the user if the
+        constraint is important for the rightness of the answer (Yes/No).
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        for cons in self.mined_constraints:
+            example_answ = ""
+            for answ in self.question.student_answers:
+                if example_answ is not None:
+                    if cons in answ.fulfilled_constraints:
+                        cons_a = cons.activity_a.activity_text
+                        cons_b = cons.activity_b.activity_text
+                        proc_answ = answ.pre_processed_answer_text
+                        if cons_a in proc_answ and cons_b in proc_answ:
+                            example_answ = answ.answer_text
+            print("Q: " + self.question.q_text)
+            print("Student: " + example_answ)
+            print(cons.constraint_type.constraint_type_name + "[" +
+                    cons.activity_a.activity_text + "," +
+                    cons.activity_b.activity_text + "]")
+            user_input = ""
+            while user_input not in ["y", "n"]:
+                user_input = input("Important?(y/n): ")
+                if user_input.lower() == "y":
+                    rightness = True
+                if user_input.lower() == "n":
+                    rightness = False
+                cons.essential_for_rightness = rightness
+                print("")
+
+
 class Activity:
     """
     An Activity that was discovered from an event-log
@@ -483,8 +570,8 @@ class Constraint:
         To store the constraint type
     constraint_support : int
         To store the constraint support
-    correctness : str
-        The "correctness" of a constraint ("right", "wrong", "neutral")
+    essential_for_rightness : bool
+        If the constraint is important for the rightness of an answer (Yes/No)
     """
 
     def __init__(self,activity_a, activity_b,
@@ -503,7 +590,7 @@ class Constraint:
         self.activity_b = activity_b
         self.constraint_type = constraint_type
         self.constraint_support = constraint_support
-        self.correctness = ""
+        self.essential_for_rightness = True
         self.activity_a.event_log.mined_constraints.append(self)
 
 class Constraint_type:
@@ -563,11 +650,24 @@ class Constraint_type:
                                                             # of the answer
         return_value = False
         # Use the conformance check that belongs to the constraint-type
+        #Binary Positive Constraints:----
+        # X_Existence----
         if self.constraint_type_name == "Co-Existence":
             return_value = self.__co_existence_check(act_a,act_b,
                                                      processed_answer)
+        if self.constraint_type_name == "Responded Existence":
+            return_value = self.__responded_existence_check(act_a,act_b,
+                                                           processed_answer)
+
+        # Simple_X----
         if self.constraint_type_name == "Precedence":
             return_value = self.__precedence_check(act_a,act_b,processed_answer)
+        if self.constraint_type_name == "Response":
+            return_value = self.__response_check(act_a,act_b,processed_answer)
+        if self.constraint_type_name == "Succession":
+            return_value = self.__succession_check(act_a,act_b,processed_answer)
+
+        # Alterate_X----
         if self.constraint_type_name == "Alternate Precedence":
             return_value = self.__alternate_precedence_check(act_a,act_b,
                                                              processed_answer)
@@ -577,6 +677,8 @@ class Constraint_type:
         if self.constraint_type_name == "Alternate Succession":
             return_value = self.__alternate_succession_check(act_a,act_b,
                                                            processed_answer)
+
+        # Chain_X----
         if self.constraint_type_name == "Chain Precedence":
             return_value = self.__chain_precedence_check(act_a,act_b,
                                                            processed_answer)
@@ -586,35 +688,177 @@ class Constraint_type:
         if self.constraint_type_name == "Chain Succession":
             return_value = self.__chain_succession_check(act_a,act_b,
                                                            processed_answer)
-        if self.constraint_type_name == "Responded Existence":
-            return_value = self.__responded_existence_check(act_a,act_b,
-                                                           processed_answer)
-        if self.constraint_type_name == "Response":
-            return_value = self.__response_check(act_a,act_b,
-                                                           processed_answer)
         return return_value
 
-    # Unary Constraints:
-    def __absence_1_check():
-        pass
-    def __absence_2_check():
-        pass
-    def __absence_3_check():
-        pass
-    def __exactly_1_check():
-        pass
-    def __exactly_2_check():
-        pass
-    def __existence_1_check():
-        pass
-    def __existence_2_check():
-        pass
-    def __existence_3_check():
-        pass
-    def __init_check():
-        pass
+    #Binary Positive Constraints:----
+    # X_Existence----
+    def __co_existence_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Co-Existence[A,B]
 
-    #Binary Positive Constraints:
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
+
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # Check if A and B are both NOT in the answer:
+        if act_a not in processed_answer and act_b not in processed_answer:
+            return True
+        # Check if A and B are both in the answer:
+        if act_a in processed_answer and act_b in processed_answer:
+            return True
+        else:
+            # If only A or only B is in the answer:
+            return False
+
+    def __responded_existence_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Responded Existence[A,B]
+
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
+
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # True if A not in answer:
+        if act_a not in processed_answer:
+            return True
+        # False if A in answer but B not in answer
+        if act_a in processed_answer and act_b not in processed_answer:
+            return False
+        # True if A is in the answer and B is in the answer
+        return True
+
+    # Simple_X----
+    def __precedence_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Precedence[A,B]
+
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
+
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        checking = processed_answer # store the answer
+        if act_b not in checking:
+            # if B not in the answer:
+            return True
+        while act_b in checking:
+            # as long as B is in the answer:
+            act_b_index = checking.index(act_b) # find index of B
+            if act_a not in checking[:act_b_index]:
+                # If A is not before B:
+                return False
+            # Continue with the part of the answer after the first B
+            checking = checking[act_b_index+1:]
+        # If the answer does not violate the constraint:
+        return True
+
+    def __response_check(self,act_a,act_b,processed_answer):
+        """
+        Checks if the answer fulfills Response[A,B]
+
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
+
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # True if A is not in processed_answer:
+        if act_a not in processed_answer:
+            return True
+        # False if A in answer but B not in answer:
+        if act_a in processed_answer and act_b not in processed_answer:
+            return False
+        checking = processed_answer
+        while act_a in checking:
+            # False if A is in remaining answer but B is not:
+            if act_b not in checking:
+                return False
+            marker_a = checking.index(act_a)
+            # False if A is the last element:
+            if marker_a == len(checking)-1:
+                return False
+            if act_b not in checking[marker_a:]:
+                return False
+            checking = checking[marker_a+1:]
+        return True
+
+    def __succession_check(self,act_a, act_b,processed_answer):
+        """
+        Checks if the answer fulfills Succession[A,B]
+
+        Parameters
+        ----------
+        act_a : str
+            The actual text (word) of activity A
+        act_b : str
+            The actual text (word) of activity B
+        processed_answer : str[0..*]
+            the list of processed words of the answer
+
+        Returns
+        -------
+        True -> If the answer fulfills the constraint
+        False -> If the answer does not fulfill the constraint
+        """
+        # True if A and B are not in the answer:
+        if act_a not in processed_answer and act_b not in processed_answer:
+            return True
+        # False if only A or only B is in the answer:
+        if act_a not in processed_answer or act_b not in processed_answer:
+            return False
+        checking = processed_answer
+        while act_a in checking:
+            if act_b not in checking:
+                return False
+            marker_a = checking.index(act_a)
+            marker_b = checking.index(act_b)
+            # False if A is the last element of the answer:
+            if marker_a == len(checking)-1:
+                return False
+            # False if B comes before A:
+            if marker_a > marker_b:
+                return False
+            # Continue after B:
+            checking = checking[marker_b+1:]
+        return True
+
     # Alternate X
     def __alternate_precedence_check(self,act_a,act_b,processed_answer):
         """
@@ -858,152 +1102,6 @@ class Constraint_type:
             checking.pop(marker_a)
             checking.pop(checking.index(act_b))
         return True
-    #--
-    def __co_existence_check(self,act_a,act_b,processed_answer):
-        """
-        Checks if the answer fulfills Co-Existence[A,B]
-
-        Parameters
-        ----------
-        act_a : str
-            The actual text (word) of activity A
-        act_b : str
-            The actual text (word) of activity B
-        processed_answer : str[0..*]
-            the list of processed words of the answer
-
-        Returns
-        -------
-        True -> If the answer fulfills the constraint
-        False -> If the answer does not fulfill the constraint
-        """
-        # Check if A and B are both NOT in the answer:
-        if act_a not in processed_answer and act_b not in processed_answer:
-            return True
-        # Check if A and B are both in the answer:
-        if act_a in processed_answer and act_b in processed_answer:
-            return True
-        else:
-            # If only A or only B is in the answer:
-            return False
-
-    def __precedence_check(self,act_a,act_b,processed_answer):
-        """
-        Checks if the answer fulfills Precedence[A,B]
-
-        Parameters
-        ----------
-        act_a : str
-            The actual text (word) of activity A
-        act_b : str
-            The actual text (word) of activity B
-        processed_answer : str[0..*]
-            the list of processed words of the answer
-
-        Returns
-        -------
-        True -> If the answer fulfills the constraint
-        False -> If the answer does not fulfill the constraint
-        """
-        checking = processed_answer # store the answer
-        if act_b not in checking:
-            # if B not in the answer:
-            return True
-        while act_b in checking:
-            # as long as B is in the answer:
-            act_b_index = checking.index(act_b) # find index of B
-            if act_a not in checking[:act_b_index]:
-                # If A is not before B:
-                return False
-            # Continue with the part of the answer after the first B
-            checking = checking[act_b_index+1:]
-        # If the answer does not violate the constraint:
-        return True
-
-    def __responded_existence_check(self,act_a,act_b,processed_answer):
-        """
-        Checks if the answer fulfills Responded Existence[A,B]
-
-        Parameters
-        ----------
-        act_a : str
-            The actual text (word) of activity A
-        act_b : str
-            The actual text (word) of activity B
-        processed_answer : str[0..*]
-            the list of processed words of the answer
-
-        Returns
-        -------
-        True -> If the answer fulfills the constraint
-        False -> If the answer does not fulfill the constraint
-        """
-        # True if A not in answer:
-        if act_a not in processed_answer:
-            return True
-        # False if A in answer but B not in answer
-        if act_a in processed_answer and act_b not in processed_answer:
-            return False
-        # True if A is in the answer and B is in the answer
-        return True
-
-    def __response_check(self,act_a,act_b,processed_answer):
-        """
-        Checks if the answer fulfills Response[A,B]
-
-        Parameters
-        ----------
-        act_a : str
-            The actual text (word) of activity A
-        act_b : str
-            The actual text (word) of activity B
-        processed_answer : str[0..*]
-            the list of processed words of the answer
-
-        Returns
-        -------
-        True -> If the answer fulfills the constraint
-        False -> If the answer does not fulfill the constraint
-        """
-        # True if A is not in processed_answer:
-        if act_a not in processed_answer:
-            return True
-        # False if A in answer but B not in answer:
-        if act_a in processed_answer and act_b not in processed_answer:
-            return False
-        checking = processed_answer
-        while act_a in checking:
-            # False if A is in remaining answer but B is not:
-            if act_b not in checking:
-                return False
-            marker_a = checking.index(act_a)
-            # False if A is the last element:
-            if marker_a == len(checking)-1:
-                return False
-            if act_b not in checking[marker_a:]:
-                return False
-            checking = checking[marker_a+1:]
-        return True
-
-    def __succession_check():
-        pass
-
-    # Binary Negative Constraints:
-    def __not_chain_succession_check():
-        pass
-
-    def __not_co_existence_check():
-        pass
-
-    def __not_succession_check():
-        pass
-
-    # Choice Constraints:
-    def __choice_check():
-        pass
-
-    def __exclusive_choice_check():
-        pass
 
 #-----------------------------------------------------------------------------
 coexistence = Constraint_type("Co-Existence") # instantiation of "Co-Existence"
@@ -1016,9 +1114,9 @@ chain_response = Constraint_type("Chain Response")
 chain_succession = Constraint_type("Chain Succession")
 responded_existence = Constraint_type("Responded Existence")
 response = Constraint_type("Response")
-
+succession = Constraint_type("Succession")
 
 constraint_types = [coexistence,precedence,alternate_precedence,
                     alternate_response, alternate_succession,chain_precedence,
                     chain_response,chain_succession,responded_existence,
-                    response]
+                    response,succession]
